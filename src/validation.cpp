@@ -278,7 +278,7 @@ int64_t nMaxTipAge = DEFAULT_MAX_TIP_AGE;
 BlockHash hashAssumeValid;
 arith_uint256 nMinimumChainWork;
 
-CFeeRate minRelayTxFee = CFeeRate(DEFAULT_MIN_RELAY_TX_FEE_PER_KB);
+CFeeRate minRelayTxFee = CFeeRate(LEGACY_MIN_RELAY_TX_FEE_PER_KB);
 Amount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
 
 CTxMemPool g_mempool;
