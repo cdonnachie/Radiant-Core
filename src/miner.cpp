@@ -101,6 +101,26 @@ static BlockAssembler::Options DefaultOptions(const Config &config) {
     if (Amount n = Amount::zero();
             gArgs.IsArgSet("-blockmintxfee") && ParseMoney(gArgs.GetArg("-blockmintxfee", ""), n)) {
         options.blockMinFeeRate = CFeeRate(n);
+    } else {
+        // If -blockmintxfee not explicitly set, use appropriate default based on chain height
+        LOCK(cs_main);
+        const CBlockIndex *tip = ::ChainActive().Tip();
+        const Consensus::Params &consensusParams = config.GetChainParams().GetConsensus();
+        
+        if (tip && IsRadiantCore2Enabled(consensusParams, tip)) {
+            // After Radiant Core 2.0 activation, check if we're past the grace period
+            const int graceEndHeight = consensusParams.radiantCore2UpgradeHeight + RELAY_FEE_GRACE_PERIOD_BLOCKS;
+            if (tip->nHeight + 1 >= graceEndHeight) {
+                // Past grace period: use new fee
+                options.blockMinFeeRate = CFeeRate(DEFAULT_BLOCK_MIN_TX_FEE_PER_KB);
+            } else {
+                // During grace period: use legacy fee
+                options.blockMinFeeRate = CFeeRate(LEGACY_BLOCK_MIN_TX_FEE_PER_KB);
+            }
+        } else {
+            // Before Radiant Core 2.0 activation: use legacy fee
+            options.blockMinFeeRate = CFeeRate(LEGACY_BLOCK_MIN_TX_FEE_PER_KB);
+        }
     }
 
     return options;
