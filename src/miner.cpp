@@ -141,21 +141,13 @@ BlockAssembler::CreateNewBlock(const CScript &scriptPubKeyIn, double timeLimitSe
 
     const Consensus::Params &consensusParams = chainparams.GetConsensus();
 
-    // Enforce minimum fee rate based on Radiant Core 2.0 activation
-    // After block 400,000, the minimum fee is 10,000,000 sat/kB (0.1 RXD/kB)
-    // Before that, it's 1,000,000 sat/kB (0.01 RXD/kB)
-    if (!chainparams.MineBlocksOnDemand()) {
-        if (IsRadiantCore2Enabled(consensusParams, pindexPrev)) {
-            if (blockMinFeeRate < CFeeRate(DEFAULT_BLOCK_MIN_TX_FEE_PER_KB)) {
-                blockMinFeeRate = CFeeRate(DEFAULT_BLOCK_MIN_TX_FEE_PER_KB);
-            }
-        } else {
-            // Pre-upgrade: use legacy fee, but still cap at legacy maximum
-            if (blockMinFeeRate > CFeeRate(LEGACY_BLOCK_MIN_TX_FEE_PER_KB)) {
-                blockMinFeeRate = CFeeRate(LEGACY_BLOCK_MIN_TX_FEE_PER_KB);
-            }
-        }
-    }
+    // Note: Radiant Core 2.0 activation at block 400,000 changes the network minimum relay fee.
+    // - Before block 417,280: 1,000,000 sat/kB (60-day grace period for exchanges to upgrade)
+    // - After block 417,280: 10,000,000 sat/kB (network enforced)
+    //
+    // Pools can set -blockmintxfee lower, but transactions below network relay minimum won't
+    // reach their mempool via P2P (they would need direct submission or whitelisted peers).
+    // Network relay enforcement is in validation.cpp and init.cpp.
 
     pblock->nVersion = ComputeBlockVersion(pindexPrev, consensusParams);
     // -regtest only: allow overriding block.nVersion with

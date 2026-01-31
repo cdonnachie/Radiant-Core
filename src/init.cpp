@@ -19,6 +19,7 @@
 #include <checkpoints.h>
 #include <compat/sanity.h>
 #include <config.h>
+#include <consensus/activation.h>
 #include <consensus/validation.h>
 #include <dsproof/dsproof.h>
 #include <dsproof/storage.h>
@@ -1910,6 +1911,59 @@ bool AppInitParameterInteraction(Config &config) {
         }
         // High fee check is done afterward in WalletParameterInteraction()
         ::minRelayTxFee = CFeeRate(n);
+
+        // Enforce network minimum - user setting cannot be lower than protocol requires
+        CBlockIndex *pindexTip = ::ChainActive().Tip();
+        if (pindexTip) {
+            const Consensus::Params &consensusParams = config.GetChainParams().GetConsensus();
+            const int64_t nHeight = pindexTip->nHeight + 1;
+
+            Amount networkMinimum = LEGACY_MIN_RELAY_TX_FEE_PER_KB;
+
+            if (IsRadiantCore2Enabled(consensusParams, pindexTip)) {
+                const int64_t activationHeight = consensusParams.radiantCore2ActivationHeight;
+                const int64_t blocksSinceActivation = nHeight - activationHeight;
+
+                if (blocksSinceActivation >= RELAY_FEE_GRACE_PERIOD_BLOCKS) {
+                    // After grace period: network requires higher minimum
+                    networkMinimum = DEFAULT_MIN_RELAY_TX_FEE_PER_KB;
+                }
+            }
+
+            if (n < networkMinimum) {
+                InitWarning(strprintf("Specified -minrelaytxfee of %s is below network minimum of %s. "
+                                      "Raising to network minimum to maintain network connectivity.",
+                                      CFeeRate(n).ToString(), CFeeRate(networkMinimum).ToString()));
+                ::minRelayTxFee = CFeeRate(networkMinimum);
+            }
+        }
+    } else {
+        // Calculate network minimum relay fee based on Radiant Core 2.0 activation
+        // Keep legacy fee (1,000,000 sat/kB) during entire grace period (17,280 blocks / ~60 days)
+        // Only jump to new fee (10,000,000 sat/kB) after grace period ends
+        // This gives exchanges 60 full days to upgrade without any transaction failures
+        CBlockIndex *pindexTip = ::ChainActive().Tip();
+        if (pindexTip) {
+            const Consensus::Params &consensusParams = config.GetChainParams().GetConsensus();
+            const int64_t nHeight = pindexTip->nHeight + 1;
+
+            if (IsRadiantCore2Enabled(consensusParams, pindexTip)) {
+                const int64_t activationHeight = consensusParams.radiantCore2ActivationHeight;
+                const int64_t blocksSinceActivation = nHeight - activationHeight;
+
+                if (blocksSinceActivation >= RELAY_FEE_GRACE_PERIOD_BLOCKS) {
+                    // After grace period: enforce new higher fee
+                    ::minRelayTxFee = CFeeRate(DEFAULT_MIN_RELAY_TX_FEE_PER_KB);
+                } else {
+                    // During grace period: keep legacy fee to allow exchanges time to upgrade
+                    ::minRelayTxFee = CFeeRate(LEGACY_MIN_RELAY_TX_FEE_PER_KB);
+                }
+            } else {
+                // Pre-activation: use legacy fee
+                ::minRelayTxFee = CFeeRate(LEGACY_MIN_RELAY_TX_FEE_PER_KB);
+            }
+        }
+        // If no tip yet (initial sync), use default which is already set
     }
 
     const int64_t nTxBroadcastInterval = gArgs.GetArg("-txbroadcastinterval", DEFAULT_INV_BROADCAST_INTERVAL);

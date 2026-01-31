@@ -71,6 +71,13 @@ struct Params;
  */
 static constexpr Amount LEGACY_MIN_RELAY_TX_FEE_PER_KB(1000000 * SATOSHI);
 static constexpr Amount DEFAULT_MIN_RELAY_TX_FEE_PER_KB(10000000 * SATOSHI);
+
+/** Grace period for legacy relay fee after Radiant Core 2.0 activation
+ * Legacy fee remains valid for 17,280 blocks (~60 days at 5 min/block) to allow
+ * exchanges and services time to upgrade their fee settings.
+ */
+static constexpr int64_t RELAY_FEE_GRACE_PERIOD_BLOCKS = 17280;
+
 /** Default for -excessutxocharge for transactions transactions */
 static constexpr Amount DEFAULT_UTXO_FEE = Amount::zero();
 //! -maxtxfee default
