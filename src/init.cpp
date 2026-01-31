@@ -1921,7 +1921,7 @@ bool AppInitParameterInteraction(Config &config) {
             Amount networkMinimum = LEGACY_MIN_RELAY_TX_FEE_PER_KB;
 
             if (IsRadiantCore2Enabled(consensusParams, pindexTip)) {
-                const int64_t activationHeight = consensusParams.radiantCore2ActivationHeight;
+                const int64_t activationHeight = consensusParams.radiantCore2UpgradeHeight;
                 const int64_t blocksSinceActivation = nHeight - activationHeight;
 
                 if (blocksSinceActivation >= RELAY_FEE_GRACE_PERIOD_BLOCKS) {
@@ -1948,7 +1948,7 @@ bool AppInitParameterInteraction(Config &config) {
             const int64_t nHeight = pindexTip->nHeight + 1;
 
             if (IsRadiantCore2Enabled(consensusParams, pindexTip)) {
-                const int64_t activationHeight = consensusParams.radiantCore2ActivationHeight;
+                const int64_t activationHeight = consensusParams.radiantCore2UpgradeHeight;
                 const int64_t blocksSinceActivation = nHeight - activationHeight;
 
                 if (blocksSinceActivation >= RELAY_FEE_GRACE_PERIOD_BLOCKS) {
